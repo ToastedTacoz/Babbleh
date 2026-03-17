@@ -109,6 +109,8 @@ end
 
 function module.generate()
     local r = ""
+    local e = 0
+    local c = true
     local chances = {}
     local words = {}
     local tc = 0
@@ -134,6 +136,11 @@ function module.generate()
             table.insert(words,Ptext)
         else
             printd("Failed ",Ptext)
+            e += 1
+
+            if e >= 7 then
+                c = false
+            end
         end
     end
     
@@ -167,7 +174,7 @@ function module.generate()
         add(capitalizeFirst(r["Word"]))
     end
     
-    while true do
+    while c do
         if l then
             local linkWords = module.links[l] or {}
             
