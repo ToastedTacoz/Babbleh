@@ -2,7 +2,7 @@
 A fun little text generator that uses training data.
 
 ## ***How to use***
-First of all training data is quite slim at start.<br><br>
+First of all, training data is quite slim at start.<br><br>
 With only 40 lines *you* are **required** to add your own data.<br>
 To add data type directly into the data.txt, or use the .load example down below.
 ### **Code Examples**
@@ -29,12 +29,6 @@ module.load("Please help me")
 <br>
 
 Don't make it too long or too short, and especially ***NEVER*** make it a repeat nor clone!!
-```
-Console:
-Rejected a!!
-```
-But don't make it too long or short, not a clone/repeat. Or this will be your console!!
-
 ```
 Console:
 Rejected a!!
