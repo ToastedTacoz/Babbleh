@@ -56,7 +56,7 @@ end
 function module.load(textBase,file)
     local text = module.strip(textBase)
     
-    if #text > 0 and #module.loaded["Sentences"] > maxLoadEntries then
+    if #text > 0 and #module.loaded["Sentences"] < maxLoadEntries then
         if (((not module.loaded["Sentences"][text]) or allowRepeats) and (((#text >= minLength) or (not isMinLength)) and ((#text <= maxLength) or (not isMaxLength)))) then
             if not file then
                 local file = io.open("data.txt","a")
