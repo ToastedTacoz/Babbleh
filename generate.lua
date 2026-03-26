@@ -4,7 +4,9 @@ local module = {}
 -- 
 -- Tweak these to not nuke your PC
 
-local exhuastGeneration = true -- If it is false it will end based off chance (buggy), and if true it will keep going, until it has no more options.
+local lowDataLoopKillSwitchSensitivity = 1
+local maxLoadEntries = math.huge
+local exhuastGeneration = false -- If it is false it will end based off chance (buggy), and if true it will keep going, until it has no more options.
 local allowRepeats = false -- Why would you turn this on .-.
 local isMaxLength = true
 local isMinLength = true -- Like an Apendix, doesn't do much but is still good to have around.
@@ -19,7 +21,7 @@ module.data = {} -- Gives data for words to do chance pulls for start and ends
 module.links = {} -- Allows chain generation
 
 local function printd(t,t2,t3,t4)
-    print(tostring(t or "")..tostring(t2 or "")..tostring(t3 or "")..tostring(t4 or "").."\n")
+    --print(tostring(t or "")..tostring(t2 or "")..tostring(t3 or "")..tostring(t4 or "").."\n")
 end
 
 local function capitalizeFirst(v)
@@ -54,7 +56,7 @@ end
 function module.load(textBase,file)
     local text = module.strip(textBase)
     
-    if #text > 0 then
+    if #text > 0 and #module.loaded["Sentences"] > maxLoadEntries then
         if (((not module.loaded["Sentences"][text]) or allowRepeats) and (((#text >= minLength) or (not isMinLength)) and ((#text <= maxLength) or (not isMaxLength)))) then
             if not file then
                 local file = io.open("data.txt","a")
@@ -109,12 +111,11 @@ end
 
 function module.generate()
     local r = ""
-    local e = 0
-    local c = true
     local chances = {}
     local words = {}
     local tc = 0
     local l = ""
+    local f2 = 0
     
     local function find(t)
         for i,v in pairs(words) do
@@ -132,15 +133,13 @@ function module.generate()
         if not ((find(Ptext) >= (#words - 3))) then -- stops loops ex. I am i am i am (From "am i" and "i am" looping)
             r = r .. text .. " "
             l = Ptext
+            f2 = 0
             
             table.insert(words,Ptext)
         else
+            f2 = f2 + 1
+            
             printd("Failed ",Ptext)
-            e += 1
-
-            if e >= 7 then
-                c = false
-            end
         end
     end
     
@@ -174,7 +173,7 @@ function module.generate()
         add(capitalizeFirst(r["Word"]))
     end
     
-    while c do
+    while true do
         if l then
             local linkWords = module.links[l] or {}
             
@@ -205,6 +204,10 @@ function module.generate()
             if f >= 2 then
                 break
             end
+        end
+        
+        if f2 >= (4/lowDataLoopKillSwitchSensitivity) then
+            return module.generate()
         end
     end
     
