@@ -360,14 +360,14 @@ function module.init()
             local dp = mSplit[i]
             local mn = mSplit[i-1]
             
-            print(i,mn,dp)
+            printd(i,mn,dp)
             
             d[mn] = dp
         end
         
         module.moodData[mSplit[1]] = d
         
-        print(mSplit[1])
+        printd(mSplit[1])
     end
     
     printd("Compiled data!")
