@@ -121,7 +121,7 @@ function module.load(textBase,file)
 end
 
 function module.getMood(sentence)
-    local spl = module.split(sentence," ")
+    local spl = module.split(module.strip(sentence)," ")
     local ret = {}
     
     for i,v in pairs(spl) do
@@ -139,58 +139,13 @@ end
 
 function module.generate(settings)
     local r = ""
-    local chances = {}
+    local chancesStart = {}
     local words = {}
     local tc = 0
     local l = ""
     local f2 = 0
     local data = settings or {}
-    
-    local function add(text)
-        local Ptext = string.lower(text)
-        
-        if not ((find(Ptext,words) >= (#words - 3))) then -- stops loops ex. I am i am i am (From "am i" and "i am" looping)
-            r = r .. text .. " "
-            l = Ptext
-            f2 = 0
-            
-            table.insert(words,Ptext)
-        else
-            f2 = f2 + 1
-            
-            printd("Failed ",Ptext)
-        end
-    end
-    
-    for i,v in pairs(module.data) do
-        local w = v.Start/v.Uses
-        
-        if not (w <= 0) then
-            tc = tc + w
-            
-            table.insert(chances,{["Word"] = i,["Chance"] = w})
-        end
-    end
-    
-    local f = 0
-    
-    if true then
-        local ra = math.random()*tc
-        local c = 0
-        
-        for i,v in pairs(chances) do
-            c = c + v["Chance"]
-            
-            if c >= ra then
-                add(capitalizeFirst(v["Word"]))
-                break
-            end
-        end
-    else
-        local r = chances[math.random(1,#chances)]
-        
-        add(capitalizeFirst(r["Word"]))
-    end
+    local wce = 0
     
     local function total(l)
         printd("t")
@@ -236,6 +191,62 @@ function module.generate(settings)
         return t
     end
     
+    local function getLuck(v)
+        local mood = module.moodData[v]
+        local mdm = 1 + (mood and total(multiply(custom(mood,function(v2) return v2 / total(mood) end),(data.MoodMod or {}))) or 0)
+        local ch = (module.data[v].Uses ^ (data.Diversity or 0.9)) * mdm
+        
+        printd(v.." "..(ch/mdm).." "..mdm.." "..(mood and "true" or "false"))
+        
+        return ch
+    end
+    
+    local function add(text)
+        local Ptext = string.lower(text)
+        
+        if not ((find(Ptext,words) >= (#words - 3))) then -- stops loops ex. I am i am i am (From "am i" and "i am" looping)
+            r = r .. text .. " "
+            l = Ptext
+            f2 = 0
+            
+            table.insert(words,Ptext)
+        else
+            f2 = f2 + 1
+            
+            printd("Failed ",Ptext)
+        end
+    end
+    
+    for i,v in pairs(module.data) do
+        local w = v.Start/v.Uses
+        
+        if not (w <= 0) then
+            tc = tc + w
+            
+            chancesStart[i] = getLuck(i)
+        end
+    end
+    
+    local f = 0
+    
+    if true then
+        local ra = math.random()*tc
+        local c = 0
+        
+        for i,v in pairs(chancesStart) do
+            c = c + v
+            
+            if c >= ra then
+                add(capitalizeFirst(i))
+                break
+            end
+        end
+    else
+        local r = chances[math.random(1,#chances)]
+        
+        add(capitalizeFirst(r["Word"]))
+    end
+    
     while true do
         if l then
             local linkWords = module.links[l] or {}
@@ -243,11 +254,7 @@ function module.generate(settings)
             local totalChance = 0
             
             for i,v in pairs(linkWords) do
-                local mood = module.moodData[v]
-                local mdm = 1 + (mood and total(multiply(custom(mood,function(v2) return v2 / total(mood) end),(data.MoodMod or {}))) or 0)
-                local ch = (module.data[v].Uses ^ (data.Diversity or 0.9)) * mdm
-                
-                printd(v.." "..(ch/mdm).." "..mdm.." "..(mood and "true" or "false"))
+                local ch = getLuck(v)
                 
                 chances[v] = ch
                 
@@ -256,11 +263,13 @@ function module.generate(settings)
             
             if #linkWords > 0 then
                 local word = "FAIL"
-                local counter = 0
+                local counter = totalChance/3 -- Shitty meth logig
                 local random = math.random()*totalChance
                 
                 for i,v in pairs(chances) do
                     counter = counter + v
+                    
+                    printd(totalChance,random,counter,v,i)
                     
                     if counter >= random then
                         word = i
@@ -269,16 +278,26 @@ function module.generate(settings)
                     end
                 end
                 
-                --printd("Chose ",word)
-                
-                printd("Previous : "..(l or "nil"),"\nNew : "..word,"\nIndex : "..tostring(#words),"\nTotal : "..(l or "").." "..word)
-                
-                add(word)
-                
-                local data = module.data[word]
-                
-                if (not exhuastGeneration) and (math.random() >= (data.Uses / data.End)) then
-                    break
+                if word ~= "FAIL" then
+                    wce = 0
+                    
+                    --printd("Chose ",word)
+                    
+                    printd("Previous : "..(l or "nil"),"\nNew : "..word,"\nIndex : "..tostring(#words),"\nTotal : "..(l or "").." "..word)
+                    
+                    add(word)
+                    
+                    local data = module.data[word]
+                    
+                    if (not exhuastGeneration) and (math.random() >= (data.Uses / data.End)) then
+                        break
+                    end
+                else
+                    wce = wce + 1
+                    
+                    if wce >= 2 then
+                        break
+                    end
                 end
             else
                 printd("CE1")
