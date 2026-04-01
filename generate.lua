@@ -6,7 +6,7 @@ local module = {}
 
 local lowDataLoopKillSwitchSensitivity = 1
 local maxLoadEntries = math.huge
-local exhuastGeneration = false -- If it is false it will end based off chance (buggy), and if true it will keep going, until it has no more options.
+local exhuastGeneration = true -- If it is false it will end based off chance (buggy), and if true it will keep going, until it has no more options.
 local allowRepeats = false -- Why would you turn this on .-.
 local isMaxLength = true
 local isMinLength = true -- Like an Apendix, doesn't do much but is still good to have around.
@@ -18,10 +18,21 @@ module.loaded = {
     ["Sentences"] = {}
 }
 module.data = {} -- Gives data for words to do chance pulls for start and ends
+module.moodData = {} -- MMooodddd dddddaaaaaatttttttaaaaaaaa
 module.links = {} -- Allows chain generation
 
 local function printd(t,t2,t3,t4)
-    --print(tostring(t or "")..tostring(t2 or "")..tostring(t3 or "")..tostring(t4 or "").."\n")
+    --print(tostring(t or "")..tostring(t2 or "")..tostring(t3 or "")..tostring(t4 or ""))
+end
+
+local function find(t,t2)
+    for i,v in pairs(t2) do
+        if v == t then
+            return i
+        end
+    end
+    
+    return -math.huge
 end
 
 local function capitalizeFirst(v)
@@ -109,28 +120,36 @@ function module.load(textBase,file)
     end
 end
 
-function module.generate()
+function module.getMood(sentence)
+    local spl = module.split(sentence," ")
+    local ret = {}
+    
+    for i,v in pairs(spl) do
+        local mood = module.moodData[v]
+        
+        if mood then
+            for i,v in pairs(mood) do
+                ret[i] = ret[i] and ret[i] + v or v
+            end
+        end
+    end
+    
+    return ret
+end
+
+function module.generate(settings)
     local r = ""
     local chances = {}
     local words = {}
     local tc = 0
     local l = ""
     local f2 = 0
-    
-    local function find(t)
-        for i,v in pairs(words) do
-            if v == t then
-                return i
-            end
-        end
-        
-        return -math.huge
-    end
+    local data = settings or {}
     
     local function add(text)
         local Ptext = string.lower(text)
         
-        if not ((find(Ptext) >= (#words - 3))) then -- stops loops ex. I am i am i am (From "am i" and "i am" looping)
+        if not ((find(Ptext,words) >= (#words - 3))) then -- stops loops ex. I am i am i am (From "am i" and "i am" looping)
             r = r .. text .. " "
             l = Ptext
             f2 = 0
@@ -173,12 +192,82 @@ function module.generate()
         add(capitalizeFirst(r["Word"]))
     end
     
+    local function total(l)
+        printd("t")
+        
+        local t = 0
+        
+        for i,v in pairs(l) do
+            t = t + v
+        end
+        
+        printd("t2")
+        
+        return t
+    end
+    
+    local function multiply(l,l2)
+        printd("m")
+        
+        local t = {}
+        
+        for i,v in pairs(l) do
+            if type(v) == "number" and type(l2[i]) == "number" then
+                t[i] = v * l2[i]
+            end
+        end
+        
+        printd("m2")
+        
+        return t
+    end
+    
+    local function custom(l,f)
+        printd("c")
+        
+        local t = {}
+        
+        for i,v in pairs(l) do
+            t[i] = f(v)
+        end
+        
+        printd("c2")
+        
+        return t
+    end
+    
     while true do
         if l then
             local linkWords = module.links[l] or {}
+            local chances = {}
+            local totalChance = 0
+            
+            for i,v in pairs(linkWords) do
+                local mood = module.moodData[v]
+                local mdm = 1 + (mood and total(multiply(custom(mood,function(v2) return v2 / total(mood) end),(data.MoodMod or {}))) or 0)
+                local ch = (module.data[v].Uses ^ (data.Diversity or 0.9)) * mdm
+                
+                printd(v.." "..(ch/mdm).." "..mdm.." "..(mood and "true" or "false"))
+                
+                chances[v] = ch
+                
+                totalChance = totalChance + ch
+            end
             
             if #linkWords > 0 then
-                local word = linkWords[math.random(1,#linkWords)]
+                local word = "FAIL"
+                local counter = 0
+                local random = math.random()*totalChance
+                
+                for i,v in pairs(chances) do
+                    counter = counter + v
+                    
+                    if counter >= random then
+                        word = i
+                        
+                        break
+                    end
+                end
                 
                 --printd("Chose ",word)
                 
@@ -214,11 +303,43 @@ function module.generate()
     return r
 end
 
+function module.moodAdd(inf,word)
+    local d = module.moodData[word]
+    
+    local function format(da)
+        local ds = word
+        
+        for i,v in pairs(da) do
+            ds = ds .. ":" .. i .. ":" .. v
+        end
+        
+        return ds
+    end
+    
+    if d then
+        for i,v in pairs(inf) do
+            d[i] = (not d[i]) and v or (d[i] + v)
+        end
+        
+        module.moodData[word] = d
+    else
+        module.moodData[word] = inf
+    end
+    
+    local nd = module.moodData[word]
+    local lines = module.split(io.open("moodData.txt","r"):read("*a"),"\n")
+    local idx = find(format(d or {["none"] = -1}),lines)
+    
+    table.remove(lines,idx)
+end
+
 function module.init()
+    local moodText = io.open("moodData.txt","r"):read("*a")
     local text = io.open("data.txt","r"):read("*a")
     
     printd("Initializing to "..#text.." chars of data.")
     
+    local split2 = module.split(moodText,"\n")
     local split = module.split(text,"\n")
     
     printd("Compiling begining")
@@ -226,6 +347,27 @@ function module.init()
     
     for i,v in pairs(split) do
         module.load(v,true)
+    end
+    
+    printd("Compiling mood data")
+    printd(tostring(#split2-1).." lines of data.")
+    
+    for i,v in pairs(split2) do
+        local d = {}
+        local mSplit = module.split(v,":")
+        
+        for i=3,#mSplit,2 do
+            local dp = mSplit[i]
+            local mn = mSplit[i-1]
+            
+            print(i,mn,dp)
+            
+            d[mn] = dp
+        end
+        
+        module.moodData[mSplit[1]] = d
+        
+        print(mSplit[1])
     end
     
     printd("Compiled data!")
