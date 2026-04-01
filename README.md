@@ -46,7 +46,7 @@ Rejected a!!
 ## ***v1.0.1 or up only!!!!!!!111***
 <br>
 
-<br>If your want it to be ***✨CUSTOM✨*** with mood data!?!?<br>
+<br>If you want it to be ***✨CUSTOM✨*** with mood data!?!?<br>
 
 ``` lua
 local module = require("generate.lua")
